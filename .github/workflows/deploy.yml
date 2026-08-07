@@ -38,6 +38,9 @@ jobs:
           VITE_MQTT_USERNAME: ${{ secrets.VITE_MQTT_USERNAME }}
           VITE_MQTT_PASSWORD: ${{ secrets.VITE_MQTT_PASSWORD }}
 
+      - name: Add .nojekyll
+        run: touch dist/.nojekyll
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
