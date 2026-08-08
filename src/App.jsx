@@ -85,7 +85,7 @@ function LoginPage({ onLogin }) {
           {error && <div className="login-error">{error}</div>}
           <button type="submit" disabled={loading}>{loading ? 'Memuat...' : 'Masuk'}</button>
         </form>
-        <div className="login-footer">© 2025 Air & Environment</div>
+        <div className="login-footer">© 2026 Air & Environment</div>
       </div>
     </div>
   );
@@ -253,7 +253,7 @@ function DashboardPage() {
 
       <div className="card-grid">
         <div className="card">
-          <div className="label"><span>Tinggi Air</span><div className="icon-bg"><i className="fas fa-water"></i></div></div>
+          <div className="label"><span>Tinggi Permukaan Air</span><div className="icon-bg"><i className="fas fa-water"></i></div></div>
           <div className="value">{waterLevel.toFixed(1)} <small style={{ fontSize: '18px', fontWeight: 500 }}>cm</small></div>
           <span className={`status ${statusClass}`}>{statusLabel}</span>
           <div className="range">Rentang Aman: 0 - 100 cm</div>
@@ -269,6 +269,19 @@ function DashboardPage() {
           <div className="value" style={{ fontSize: 28 }}>{current.rain_detected ? 'Ya' : 'Tidak'}</div>
           <span className={`status ${current.rain_detected ? 'warning' : 'normal'}`}>{current.rain_detected ? 'Hujan' : 'Cerah'}</span>
           <div className="range">Status: {current.rain_detected ? 'Hujan terdeteksi' : 'Tidak hujan'}</div>
+        </div>
+        <div className="card">
+          <div className="label">
+            <span>Keberadaan Air</span>
+            <div className="icon-bg"><i className="fas fa-water"></i></div>
+          </div>
+          <div className="value" style={{ fontSize: 28 }}>
+            {current.water_presence ? '✅ Ada' : '❌ Tidak Ada'}
+          </div>
+          <span className={`status ${current.water_presence ? 'warning' : 'normal'}`}>
+            {current.water_presence ? 'Terdeteksi' : 'Tidak Terdeteksi'}
+          </span>
+          <div className="range">Status: {current.water_presence ? 'Ada air' : 'Tidak ada air'}</div>
         </div>
         <div className="card">
           <div className="label"><span>Suhu Udara</span><div className="icon-bg"><i className="fas fa-thermometer-half"></i></div></div>
@@ -453,7 +466,7 @@ function AboutPage() {
         <p><strong>Air & Environment Monitoring System</strong></p>
         <p>Versi 1.0.0</p>
         <p>Dibangun dengan React, Firebase, dan MQTT.</p>
-        <p>© 2025 - Semua hak dilindungi.</p>
+        <p>© 2026 - Semua hak dilindungi.</p>
       </div>
     </div>
   );
@@ -496,12 +509,12 @@ function DashboardLayout({ onLogout }) {
         <div className="sidebar-footer">
           <a href="#" onClick={onLogout} style={{ color: '#e74c3c' }}><i className="fas fa-sign-out-alt"></i> <span>Logout</span></a>
         </div>
-        <div className="footer-copyright">© 2025</div>
+        <div className="footer-copyright">© 2026</div>
       </aside>
 
       <main className="main-content">
         {renderPage()}
-        <footer className="main-footer">© 2025 Air & Environment Monitoring System</footer>
+        <footer className="main-footer">© 2026 EWS Sampean Baru</footer>
       </main>
     </div>
   );

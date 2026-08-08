@@ -13,7 +13,6 @@ export const DataProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Ambil thresholds
   useEffect(() => {
     const loadThresholds = async () => {
       try {
@@ -22,12 +21,12 @@ export const DataProvider = ({ children }) => {
           setThresholds(snap.data());
           console.log("✅ Thresholds loaded:", snap.data());
         } else {
-          console.warn("⚠️ Thresholds not found, using defaults (Bahaya:<100cm, Waspada:100-200cm, Siaga:200-500cm, Aman:>500cm)");
-          setThresholds({ water_max_aman: 500, water_max_siaga: 200, water_max_waspada: 100 });
+          console.warn("⚠️ Thresholds not found, using defaults (Aman 0-100cm, Siaga 100-300cm, Waspada 300-400cm, Bahaya >400cm)");
+          setThresholds({ water_max_aman: 100, water_max_siaga: 300, water_max_waspada: 400 });
         }
       } catch (e) {
         console.error("❌ Error loading thresholds:", e);
-        setThresholds({ water_max_aman: 500, water_max_siaga: 200, water_max_waspada: 100 });
+        setThresholds({ water_max_aman: 100, water_max_siaga: 300, water_max_waspada: 400 });
       }
     };
     loadThresholds();
@@ -71,7 +70,7 @@ export const DataProvider = ({ children }) => {
     };
   }, []);
 
-  // History (last 100)
+  // History
   useEffect(() => {
     console.log("🔍 Setting up listener for history...");
     const q = query(collection(db, "history"), orderBy("timestamp", "desc"), limit(100));
@@ -83,7 +82,7 @@ export const DataProvider = ({ children }) => {
           const data = { id: d.id, ...d.data() };
           hist.push(data);
         });
-        hist.reverse(); // chronological order
+        hist.reverse();
         console.log(`📜 History data count: ${hist.length}`);
         setHistory(hist);
       },
