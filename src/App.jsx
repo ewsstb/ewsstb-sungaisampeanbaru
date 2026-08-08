@@ -85,7 +85,7 @@ function LoginPage({ onLogin }) {
           {error && <div className="login-error">{error}</div>}
           <button type="submit" disabled={loading}>{loading ? 'Memuat...' : 'Masuk'}</button>
         </form>
-        <div className="login-footer">© 2026 Air & Environment</div>
+        <div className="login-footer">© 2026 EWS Sampean Baru</div>
       </div>
     </div>
   );
