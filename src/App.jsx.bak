@@ -85,7 +85,7 @@ function LoginPage({ onLogin }) {
           {error && <div className="login-error">{error}</div>}
           <button type="submit" disabled={loading}>{loading ? 'Memuat...' : 'Masuk'}</button>
         </form>
-        <div className="login-footer">© 2026 EWS Sampean Baru</div>
+        <div className="login-footer">© 2026 Air & Environment</div>
       </div>
     </div>
   );
@@ -326,6 +326,8 @@ function DashboardPage() {
         <div className="env-box">
           <h4><i className="fas fa-leaf" style={{ marginRight: 8, color: '#0077be' }}></i> Informasi Lingkungan</h4>
           <div className="env-item"><span className="label-env">Suhu Udara</span> <span className="value-env">{temperature.toFixed(1)} °C</span></div>
+          <div className="env-item"><span className="label-env">Tekanan Udara</span> <span className="value-env">1008 hPa</span></div>
+          <div className="env-item"><span className="label-env">Kualitas Udara (AQI)</span> <span className="value-env">42 Baik</span></div>
         </div>
 
         <div className="quick-box">
@@ -461,7 +463,7 @@ function AboutPage() {
       <h2>Tentang</h2>
       <p className="subtitle">Informasi tentang sistem monitoring</p>
       <div style={{ background: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid #e9edf4' }}>
-        <p><strong>Dashboard EWS Sungai Sampean Baru</strong></p>
+        <p><strong>Air & Environment Monitoring System</strong></p>
         <p>Versi 1.0.0</p>
         <p>Dibangun dengan React, Firebase, dan MQTT.</p>
         <p>© 2026 - Semua hak dilindungi.</p>
@@ -493,7 +495,7 @@ function DashboardLayout({ onLogout }) {
   return (
     <div className="app-container">
       <aside className="sidebar">
-        <div className="logo"><i className="fas fa-cloud-sun-rain"></i><span>EWS Sungai Sampean Baru</span></div>
+        <div className="logo"><i className="fas fa-cloud-sun-rain"></i><span>Air & Env</span></div>
         <div className="menu-label">Menu</div>
         <a href="#" className={page === 'dashboard' ? 'active' : ''} onClick={() => setPage('dashboard')}><i className="fas fa-chart-pie"></i> <span>Dashboard</span></a>
         <a href="#" className={page === 'history' ? 'active' : ''} onClick={() => setPage('history')}><i className="fas fa-history"></i> <span>Riwayat Data</span></a>
