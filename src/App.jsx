@@ -234,7 +234,32 @@ function DashboardPage() {
     },
   };
 
-  const statusClass = statusColor === 'green' ? 'aman' : statusColor === 'yellow' ? 'warning' : 'danger';
+  // statusClass: tambahkan handling untuk orange (Waspada)
+  const statusClass = statusColor === 'green' ? 'aman' : statusColor === 'yellow' ? 'warning' : statusColor === 'orange' ? 'warning' : 'danger';
+
+  // Cek kapan terakhir update
+  const getLastUpdate = () => {
+    if (!current || !current.timestamp) return 'Tidak ada data';
+    let ts = current.timestamp;
+    if (ts.toDate) ts = ts.toDate();
+    else if (typeof ts === 'number') ts = new Date(ts * 1000);
+    else if (typeof ts === 'string') ts = new Date(ts);
+    if (isNaN(ts)) return 'Invalid';
+    return ts.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+  };
+
+  // Cek apakah ESP32 masih online (5 menit)
+  const isESP32Online = () => {
+    if (!current || !current.timestamp) return false;
+    let ts = current.timestamp;
+    if (ts.toDate) ts = ts.toDate();
+    else if (typeof ts === 'number') ts = new Date(ts * 1000);
+    else if (typeof ts === 'string') ts = new Date(ts);
+    if (isNaN(ts)) return false;
+    return (Date.now() - ts.getTime()) < 300000; // 5 menit
+  };
+
+  const espOnline = isESP32Online();
 
   return (
     <>
@@ -253,15 +278,15 @@ function DashboardPage() {
 
       <div className="card-grid">
         <div className="card">
-          <div className="label"><span>Tinggi Permukaan Air</span><div className="icon-bg"><i className="fas fa-water"></i></div></div>
+          <div className="label"><span>Tinggi Air</span><div className="icon-bg"><i className="fas fa-water"></i></div></div>
           <div className="value">{waterLevel.toFixed(1)} <small style={{ fontSize: '18px', fontWeight: 500 }}>cm</small></div>
           <span className={`status ${statusClass}`}>{statusLabel}</span>
-          <div className="range">Rentang Aman: 0 - 100 cm</div>
+          <div className="range">Rentang: 0-100 Aman, 100-300 Siaga, 300-400 Waspada, ≥400 Bahaya</div>
         </div>
         <div className="card">
           <div className="label"><span>Status Gabungan</span><div className="icon-bg"><i className="fas fa-shield-alt"></i></div></div>
-          <div className="value" style={{ fontSize: 24, color: combinedStatus.color === 'green' ? '#0b7a4a' : combinedStatus.color === 'yellow' ? '#9e6d0b' : '#b33a3a' }}>{combinedStatus.label}</div>
-          <span className={`status ${combinedStatus.color === 'green' ? 'aman' : combinedStatus.color === 'yellow' ? 'warning' : 'danger'}`}>Mode: {mode.toUpperCase()}</span>
+          <div className="value" style={{ fontSize: 24, color: combinedStatus.color === 'green' ? '#0b7a4a' : combinedStatus.color === 'yellow' ? '#9e6d0b' : combinedStatus.color === 'orange' ? '#d97706' : '#b33a3a' }}>{combinedStatus.label}</div>
+          <span className={`status ${combinedStatus.color === 'green' ? 'aman' : combinedStatus.color === 'yellow' ? 'warning' : combinedStatus.color === 'orange' ? 'warning' : 'danger'}`}>Mode: {mode.toUpperCase()}</span>
           <div className="range">Relay: {relay1?'1 ':' '}{relay2?'2 ':' '}{relay3?'3 ':' '}{relay4?'4':''}</div>
         </div>
         <div className="card">
@@ -305,13 +330,45 @@ function DashboardPage() {
 
         <div className="device-status">
           <h4><i className="fas fa-server" style={{ marginRight: 8, color: '#0077be' }}></i> Status Perangkat</h4>
-          <div className="device-item"><span>Sensor Ultrasonik (Tinggi Air)</span> <span className="badge">Online</span></div>
-          <div className="device-item"><span>Sensor DS18B20 (Suhu)</span> <span className="badge">Online</span></div>
-          <div className="device-item"><span>Sensor Hujan</span> <span className="badge">Online</span></div>
-          <div className="device-item"><span>Water Presence (Trigger)</span> <span className="badge">{current.water_presence ? 'ON' : 'OFF'}</span></div>
-          <div className="device-item"><span>Relay 1 (Aman)</span> <span className={`badge ${relay1 ? '' : 'off'}`}>{relay1 ? 'ON' : 'OFF'}</span></div>
-          <div className="device-item"><span>Relay 2 (Siaga)</span> <span className={`badge ${relay2 ? '' : 'off'}`}>{relay2 ? 'ON' : 'OFF'}</span></div>
-          <div className="device-item"><span>Relay 3 & 4 (Bahaya)</span> <span className={`badge ${(relay3 || relay4) ? '' : 'off'}`}>{relay3 && relay4 ? 'ON' : 'OFF'}</span></div>
+          <div className="device-item">
+            <span>ESP32</span>
+            <span className={`badge ${espOnline ? '' : 'off'}`}>
+              {espOnline ? 'Online' : 'Offline'}
+              <span style={{ fontSize: '10px', marginLeft: '6px' }}>({espOnline ? getLastUpdate() : '-'})</span>
+            </span>
+          </div>
+          <div className="device-item">
+            <span>Sensor Ultrasonik (Tinggi Air)</span>
+            <span className={`badge ${espOnline ? '' : 'off'}`}>{espOnline ? 'Online' : 'Offline'}</span>
+          </div>
+          <div className="device-item">
+            <span>Sensor DS18B20 (Suhu)</span>
+            <span className={`badge ${espOnline ? '' : 'off'}`}>{espOnline ? 'Online' : 'Offline'}</span>
+          </div>
+          <div className="device-item">
+            <span>Sensor Hujan</span>
+            <span className={`badge ${espOnline ? '' : 'off'}`}>{espOnline ? 'Online' : 'Offline'}</span>
+          </div>
+          <div className="device-item">
+            <span>Water Presence (Trigger)</span>
+            <span className={`badge ${espOnline ? (current.water_presence ? '' : 'off') : 'off'}`}>
+              {espOnline ? (current.water_presence ? 'ON' : 'OFF') : 'Offline'}
+            </span>
+          </div>
+          <div className="device-item">
+            <span>Relay 1 (Aman)</span>
+            <span className={`badge ${relay1 ? '' : 'off'}`}>{relay1 ? 'ON' : 'OFF'}</span>
+          </div>
+          <div className="device-item">
+            <span>Relay 2 (Siaga)</span>
+            <span className={`badge ${relay2 ? '' : 'off'}`}>{relay2 ? 'ON' : 'OFF'}</span>
+          </div>
+          <div className="device-item">
+            <span>Relay 3 & 4 (Bahaya)</span>
+            <span className={`badge ${(relay3 || relay4) ? '' : 'off'}`}>
+              {relay3 && relay4 ? 'ON' : 'OFF'}
+            </span>
+          </div>
         </div>
       </div>
 
