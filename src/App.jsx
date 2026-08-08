@@ -92,7 +92,7 @@ function LoginPage({ onLogin }) {
 }
 
 // ============================================
-// 2. DASHBOARD PAGE (tanpa humidity)
+// 2. DASHBOARD PAGE
 // ============================================
 function DashboardPage() {
   const { current, history, loading, error, thresholds, getStatus } = useData();
@@ -127,9 +127,9 @@ function DashboardPage() {
       r1 = true;
     } else if (status.level === 2) { // Siaga
       r2 = true;
-    } else if (status.level === 3) { // Waspada (50-100cm)
+    } else if (status.level === 3) { // Waspada
       r3 = true;
-    } else if (status.level === 4) { // Bahaya (<50cm)
+    } else if (status.level === 4) { // Bahaya
       r3 = true;
       r4 = true;
     }
@@ -234,7 +234,6 @@ function DashboardPage() {
     },
   };
 
-  // statusClass: tambahkan handling untuk orange (Waspada)
   const statusClass = statusColor === 'green' ? 'aman' : statusColor === 'yellow' ? 'warning' : statusColor === 'orange' ? 'warning' : 'danger';
 
   // Cek kapan terakhir update
@@ -427,13 +426,66 @@ function DashboardPage() {
 }
 
 // ============================================
-// 3. HALAMAN LAIN
+// 3. HALAMAN LAIN (Riwayat Data dengan tombol Download CSV)
 // ============================================
 function HistoryPage() {
+  const { history } = useData();
+
+  const downloadCSV = () => {
+    if (!history || history.length === 0) {
+      alert('Tidak ada data untuk di-download.');
+      return;
+    }
+
+    // Header CSV
+    let csv = 'Timestamp,Water Level (cm),Temperature (°C),Water Presence,Rain Detected\n';
+
+    // Data rows
+    history.forEach(item => {
+      let timestamp = item.timestamp;
+      if (timestamp?.toDate) timestamp = timestamp.toDate();
+      else if (typeof timestamp === 'number') timestamp = new Date(timestamp * 1000);
+      else if (typeof timestamp === 'string') timestamp = new Date(timestamp);
+      const dateStr = timestamp instanceof Date && !isNaN(timestamp) ? timestamp.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) : '-';
+
+      const row = [
+        dateStr,
+        item.water_level?.toFixed(2) || '',
+        item.temperature?.toFixed(2) || '',
+        item.water_presence ? 'Ada' : 'Tidak',
+        item.rain_detected ? 'Ya' : 'Tidak'
+      ].join(',');
+      csv += row + '\n';
+    });
+
+    // Download file CSV
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `EWS_Data_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div>
-      <h2>Riwayat Data</h2>
-      <p className="subtitle">Lihat data historis dari sensor</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div>
+          <h2>Riwayat Data</h2>
+          <p className="subtitle">Lihat data historis dari sensor</p>
+        </div>
+        <button
+          onClick={downloadCSV}
+          className="sync-btn"
+          style={{ background: '#0b7a4a' }}
+          title="Download data sebagai CSV"
+        >
+          <i className="fas fa-download"></i> Download CSV
+        </button>
+      </div>
       <HistoryTable />
     </div>
   );
@@ -474,6 +526,7 @@ function DevicePage() {
       <h2>Perangkat</h2>
       <p className="subtitle">Daftar perangkat dan statusnya</p>
       <div className="device-status" style={{ width: '100%' }}>
+        <div className="device-item"><span>ESP32</span> <span className="badge">Online</span></div>
         <div className="device-item"><span>Sensor Ultrasonik (Tinggi Air)</span> <span className="badge">Online</span></div>
         <div className="device-item"><span>Sensor DS18B20 (Suhu)</span> <span className="badge">Online</span></div>
         <div className="device-item"><span>Sensor Hujan</span> <span className="badge">Online</span></div>
