@@ -127,9 +127,7 @@ function DashboardPage() {
       r1 = true;
     } else if (status.level === 2) { // Siaga
       r2 = true;
-    } else if (status.level === 3) { // Waspada
-      r3 = true;
-    } else if (status.level === 4) { // Bahaya
+    }else if (status.level === 3) { // Bahaya
       r3 = true;
       r4 = true;
     }
@@ -234,7 +232,7 @@ function DashboardPage() {
     },
   };
 
-  const statusClass = statusColor === 'green' ? 'aman' : statusColor === 'yellow' ? 'warning' : statusColor === 'orange' ? 'warning' : 'danger';
+  const statusClass = statusColor === 'green' ? 'aman' : statusColor === 'yellow' ? 'warning' : 'danger';
 
   // Cek kapan terakhir update
   const getLastUpdate = () => {
@@ -280,7 +278,7 @@ function DashboardPage() {
           <div className="label"><span>Tinggi Air</span><div className="icon-bg"><i className="fas fa-water"></i></div></div>
           <div className="value">{waterLevel.toFixed(1)} <small style={{ fontSize: '18px', fontWeight: 500 }}>cm</small></div>
           <span className={`status ${statusClass}`}>{statusLabel}</span>
-          <div className="range">Rentang: 0-100 Aman, 100-300 Siaga, 300-400 Waspada, ≥400 Bahaya</div>
+          <div className="range">Rentang: 0-50 Normal, 50-250 Siaga, &gt;250 Bahaya</div>
         </div>
         <div className="card">
           <div className="label"><span>Status Gabungan</span><div className="icon-bg"><i className="fas fa-shield-alt"></i></div></div>
@@ -429,7 +427,7 @@ function DashboardPage() {
 // 3. HALAMAN LAIN (Riwayat Data dengan tombol Download CSV)
 // ============================================
 function HistoryPage() {
-  const { history } = useData();
+  const { history, historyFilter, setHistoryFilter } = useData();
 
   const downloadCSV = () => {
     if (!history || history.length === 0) {
@@ -470,21 +468,82 @@ function HistoryPage() {
     URL.revokeObjectURL(url);
   };
 
+  // Fungsi untuk menentukan class tombol filter aktif
+  const getFilterClass = (filter) => {
+    return historyFilter === filter ? 'filter-btn active' : 'filter-btn';
+  };
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2>Riwayat Data</h2>
           <p className="subtitle">Lihat data historis dari sensor</p>
         </div>
-        <button
-          onClick={downloadCSV}
-          className="sync-btn"
-          style={{ background: '#0b7a4a' }}
-          title="Download data sebagai CSV"
-        >
-          <i className="fas fa-download"></i> Download CSV
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Tombol Filter */}
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button
+              className={getFilterClass('24h')}
+              onClick={() => setHistoryFilter('24h')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '20px',
+                border: '1px solid #ccc',
+                background: historyFilter === '24h' ? '#0077be' : '#f4f6f9',
+                color: historyFilter === '24h' ? '#fff' : '#333',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '500',
+                transition: '0.2s'
+              }}
+            >
+              24 Jam
+            </button>
+            <button
+              className={getFilterClass('7d')}
+              onClick={() => setHistoryFilter('7d')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '20px',
+                border: '1px solid #ccc',
+                background: historyFilter === '7d' ? '#0077be' : '#f4f6f9',
+                color: historyFilter === '7d' ? '#fff' : '#333',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '500',
+                transition: '0.2s'
+              }}
+            >
+              1 Minggu
+            </button>
+            <button
+              className={getFilterClass('30d')}
+              onClick={() => setHistoryFilter('30d')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '20px',
+                border: '1px solid #ccc',
+                background: historyFilter === '30d' ? '#0077be' : '#f4f6f9',
+                color: historyFilter === '30d' ? '#fff' : '#333',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '500',
+                transition: '0.2s'
+              }}
+            >
+              1 Bulan
+            </button>
+          </div>
+          <button
+            onClick={downloadCSV}
+            className="sync-btn"
+            style={{ background: '#0b7a4a', padding: '6px 16px' }}
+            title="Download data sebagai CSV"
+          >
+            <i className="fas fa-download"></i> CSV
+          </button>
+        </div>
       </div>
       <HistoryTable />
     </div>
