@@ -3,25 +3,31 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
 export default function HistoryTable() {
-  const { history } = useData();
+  const { history, historyFilter, getStatus } = useData();
   const last10 = history.slice(-10).reverse();
 
   const formatTime = (ts) => {
     if (!ts) return "-";
     try {
+      let date;
       if (ts.toDate) {
-        // Firestore Timestamp
-        return format(ts.toDate(), "dd/MM HH:mm:ss", { locale: id });
+        date = ts.toDate();
+      } else if (typeof ts === "number") {
+        date = new Date(ts * 1000);
+      } else if (typeof ts === "string") {
+        date = new Date(ts);
+      } else if (ts instanceof Date) {
+        date = ts;
+      } else {
+        return "-";
       }
-      if (typeof ts === "number") {
-        // Unix timestamp (detik)
-        return format(new Date(ts * 1000), "dd/MM HH:mm:ss", { locale: id });
+      if (isNaN(date.getTime())) return "-";
+
+      if (historyFilter === '7d' || historyFilter === '30d') {
+        return format(date, "dd MMM yyyy", { locale: id });
+      } else {
+        return format(date, "dd MMM HH:mm", { locale: id });
       }
-      if (typeof ts === "string") {
-        // ISO string
-        return format(new Date(ts), "dd/MM HH:mm:ss", { locale: id });
-      }
-      return "-";
     } catch (e) {
       console.warn("Error formatting timestamp:", ts, e);
       return "-";
@@ -34,9 +40,36 @@ export default function HistoryTable() {
     return value;
   };
 
+  // Fungsi untuk mendapatkan status dari water_level
+  const getStatusLabel = (waterLevel) => {
+    if (waterLevel === undefined || waterLevel === null) return "-";
+    const status = getStatus(waterLevel);
+    return status?.label || "-";
+  };
+
+  // Warna status
+  const getStatusColor = (waterLevel) => {
+    if (waterLevel === undefined || waterLevel === null) return "#6b7d98";
+    const status = getStatus(waterLevel);
+    if (!status) return "#6b7d98";
+    switch (status.color) {
+      case 'green': return '#0b7a4a';
+      case 'yellow': return '#9e6d0b';
+      case 'red': return '#b33a3a';
+      default: return '#6b7d98';
+    }
+  };
+
+  const isAggregated = historyFilter === '7d' || historyFilter === '30d';
+
   return (
     <div className="p-4 bg-white rounded-2xl shadow overflow-auto max-h-96">
-      <h3 className="text-lg font-semibold mb-3">Riwayat 10 Data Terakhir</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <h3 className="text-lg font-semibold">Riwayat 10 Data Terakhir</h3>
+        {isAggregated && (
+          <span style={{ fontSize: '12px', color: '#8a9bb5' }}>⚠️ Data rata-rata harian</span>
+        )}
+      </div>
       {last10.length === 0 ? (
         <p className="text-gray-400 text-center py-4">Belum ada data history.</p>
       ) : (
@@ -45,21 +78,32 @@ export default function HistoryTable() {
             <tr className="border-b text-left">
               <th className="py-1 pr-2">Waktu</th>
               <th className="py-1 pr-2">Air (cm)</th>
+              <th className="py-1 pr-2">Kondisi</th>
               <th className="py-1 pr-2">Keberadaan Air</th>
               <th className="py-1 pr-2">Hujan</th>
               <th className="py-1">Suhu (°C)</th>
             </tr>
           </thead>
           <tbody>
-            {last10.map((item) => (
-              <tr key={item.id} className="border-b last:border-0">
-                <td className="py-1 pr-2 whitespace-nowrap">{formatTime(item.timestamp)}</td>
-                <td className="py-1 pr-2">{getSafeValue(item.water_level)}</td>
-                <td className="py-1 pr-2">{item.water_presence ? "Ada" : "Tidak"}</td>
-                <td className="py-1 pr-2">{item.rain_detected ? "Hujan" : "Tidak"}</td>
-                <td className="py-1">{getSafeValue(item.temperature)}</td>
-              </tr>
-            ))}
+            {last10.map((item, index) => {
+              const waterLevel = item.water_level;
+              const statusLabel = getStatusLabel(waterLevel);
+              const statusColor = getStatusColor(waterLevel);
+              return (
+                <tr key={item.id || index} className="border-b last:border-0">
+                  <td className="py-1 pr-2 whitespace-nowrap">{formatTime(item.timestamp)}</td>
+                  <td className="py-1 pr-2">{getSafeValue(waterLevel)}</td>
+                  <td className="py-1 pr-2">
+                    <span style={{ color: statusColor, fontWeight: '600' }}>
+                      {statusLabel}
+                    </span>
+                  </td>
+                  <td className="py-1 pr-2">{item.water_presence ? "Ada" : "Tidak"}</td>
+                  <td className="py-1 pr-2">{item.rain_detected ? "Hujan" : "Tidak"}</td>
+                  <td className="py-1">{getSafeValue(item.temperature)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
