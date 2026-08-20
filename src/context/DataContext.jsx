@@ -1,22 +1,28 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { doc, onSnapshot, collection, query, orderBy, limit, getDoc, where } from "firebase/firestore";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { doc, onSnapshot, collection, query, orderBy, limit, getDoc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { getStatus } from "../utils/thresholds";
 
 const DataContext = createContext();
 export const useData = () => useContext(DataContext);
 
+// Fungsi untuk mengonversi timestamp ke Date (apapun tipenya)
+function toDate(timestamp) {
+  if (!timestamp) return null;
+  if (timestamp.toDate) return timestamp.toDate(); // Firestore Timestamp
+  if (typeof timestamp === "number") return new Date(timestamp * 1000); // integer Unix
+  if (typeof timestamp === "string") return new Date(timestamp);
+  if (timestamp instanceof Date) return timestamp;
+  return null;
+}
+
 // Fungsi untuk mengelompokkan data per hari dan menghitung rata-rata
 function groupByDay(data) {
   const groups = {};
   data.forEach(item => {
-    let ts = item.timestamp;
-    if (ts?.toDate) ts = ts.toDate();
-    else if (typeof ts === 'number') ts = new Date(ts * 1000);
-    else if (typeof ts === 'string') ts = new Date(ts);
-    if (!(ts instanceof Date) || isNaN(ts)) return;
-
-    const key = ts.toISOString().split('T')[0]; // YYYY-MM-DD
+    const date = toDate(item.timestamp);
+    if (!date) return;
+    const key = date.toISOString().split('T')[0]; // YYYY-MM-DD
     if (!groups[key]) {
       groups[key] = {
         date: key,
@@ -34,20 +40,13 @@ function groupByDay(data) {
     groups[key].rain_detected.push(item.rain_detected);
   });
 
-  // Hitung rata-rata dan konversi ke format Firestore
-  return Object.values(groups).map(g => {
-    const avgWater = g.total_water / g.count;
-    const avgTemp = g.total_temp / g.count;
-    const waterPresence = g.water_presence.filter(Boolean).length > g.count / 2;
-    const rainDetected = g.rain_detected.filter(Boolean).length > g.count / 2;
-    return {
-      timestamp: new Date(g.date),
-      water_level: Math.round(avgWater * 10) / 10,
-      temperature: Math.round(avgTemp * 10) / 10,
-      water_presence: waterPresence,
-      rain_detected: rainDetected,
-    };
-  });
+  return Object.values(groups).map(g => ({
+    timestamp: new Date(g.date),
+    water_level: g.total_water / g.count,
+    temperature: g.total_temp / g.count,
+    water_presence: g.water_presence.filter(Boolean).length > g.count / 2,
+    rain_detected: g.rain_detected.filter(Boolean).length > g.count / 2,
+  }));
 }
 
 export const DataProvider = ({ children }) => {
@@ -57,6 +56,10 @@ export const DataProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [historyFilter, setHistoryFilter] = useState('24h');
+
+  // Refs untuk caching
+  const lastRawHashRef = useRef('');
+  const lastFilterRef = useRef('');
 
   // Ambil thresholds
   useEffect(() => {
@@ -116,25 +119,27 @@ export const DataProvider = ({ children }) => {
     };
   }, []);
 
-  // History dengan filter dan agregasi
+  // History dengan limit dinamis + caching
   useEffect(() => {
     console.log("🔍 Setting up listener for history with filter:", historyFilter);
-    
-    const now = new Date();
+
+    // Tentukan limit optimal berdasarkan filter
+    let limitCount = 3000; // default untuk 30 hari
     let startDate = new Date();
-    let limitCount = 1000;
+    const now = new Date();
+
     switch(historyFilter) {
       case '24h':
         startDate.setHours(now.getHours() - 24);
-        limitCount = 200; // cukup untuk 24 jam data 15 menit (96 data)
+        limitCount = 200; // cukup untuk 96 data + margin
         break;
       case '7d':
         startDate.setDate(now.getDate() - 7);
-        limitCount = 1000; // ambil banyak lalu diagregasi
+        limitCount = 800; // cukup untuk 672 data + margin
         break;
       case '30d':
         startDate.setDate(now.getDate() - 30);
-        limitCount = 1000;
+        limitCount = 3000; // 2880 data + margin
         break;
       default:
         startDate.setHours(now.getHours() - 24);
@@ -143,41 +148,50 @@ export const DataProvider = ({ children }) => {
 
     const q = query(
       collection(db, "history"),
-      where("timestamp", ">=", startDate),
       orderBy("timestamp", "desc"),
       limit(limitCount)
     );
-    
+
     const unsub = onSnapshot(
       q,
       (snapshot) => {
-        const hist = [];
+        const rawData = [];
         snapshot.forEach((d) => {
-          const data = { id: d.id, ...d.data() };
-          hist.push(data);
-        });
-        // Urutkan ascending (agar grouping per hari berurutan)
-        hist.sort((a, b) => {
-          let ta = a.timestamp, tb = b.timestamp;
-          if (ta?.toDate) ta = ta.toDate();
-          else if (typeof ta === 'number') ta = new Date(ta * 1000);
-          else if (typeof ta === 'string') ta = new Date(ta);
-          if (tb?.toDate) tb = tb.toDate();
-          else if (typeof tb === 'number') tb = new Date(tb * 1000);
-          else if (typeof tb === 'string') tb = new Date(tb);
-          return ta - tb;
+          rawData.push({ id: d.id, ...d.data() });
         });
 
-        let processedData = hist;
+        // --- Caching: cek apakah data & filter sama dengan sebelumnya ---
+        const currentHash = rawData.map(d => d.id).join(',');
+        if (lastFilterRef.current === historyFilter && lastRawHashRef.current === currentHash) {
+          // Data sama, skip processing
+          console.log("⏩ Cached: data unchanged, skip processing");
+          return;
+        }
+        lastRawHashRef.current = currentHash;
+        lastFilterRef.current = historyFilter;
+
+        // Filter manual berdasarkan startDate
+        const filtered = rawData.filter(item => {
+          const date = toDate(item.timestamp);
+          if (!date) return false;
+          return date >= startDate;
+        });
+
+        // Urutkan ascending untuk agregasi
+        filtered.sort((a, b) => {
+          const da = toDate(a.timestamp);
+          const db = toDate(b.timestamp);
+          return da - db;
+        });
+
+        let processedData = filtered;
         if (historyFilter === '24h') {
-          // Tampilkan semua data mentah (maks 200)
-          processedData = hist.slice(-200);
+          processedData = filtered.slice(-200);
         } else if (historyFilter === '7d' || historyFilter === '30d') {
-          // Agregasi per hari
-          processedData = groupByDay(hist);
+          processedData = groupByDay(filtered);
         }
 
-        console.log(`📜 History data count: ${processedData.length} (filter: ${historyFilter})`);
+        console.log(`📜 History data count: ${processedData.length} (filter: ${historyFilter}, limit: ${limitCount})`);
         setHistory(processedData);
       },
       (err) => {
@@ -191,12 +205,12 @@ export const DataProvider = ({ children }) => {
   const getStatusFn = useCallback((level) => getStatus(level, thresholds), [thresholds]);
 
   return (
-    <DataContext.Provider value={{ 
-      current, 
-      history, 
-      thresholds, 
-      loading, 
-      error, 
+    <DataContext.Provider value={{
+      current,
+      history,
+      thresholds,
+      loading,
+      error,
       getStatus: getStatusFn,
       historyFilter,
       setHistoryFilter
